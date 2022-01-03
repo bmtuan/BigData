@@ -1,0 +1,157 @@
+version: "3"
+
+services:
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode
+    restart: always
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - ./hadoop/namenode:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+
+  datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode1
+    hostname: datanode1
+    restart: always
+    volumes:
+      - ./hadoop/datanode1:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop.env
+      
+  datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode2
+    hostname: datanode2
+    restart: always
+    volumes:
+      - ./hadoop/datanode2:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop.env
+
+  spark_master:
+    container_name: spark_master
+    image: registry.gitlab.com/chung-pi/spark-zeppelin/spark_master:latest
+    hostname: master
+    environment:
+      - ZEPPELIN_PORT=80
+      - SPARK_MASTER=local[*]
+      - MASTER=local[*]
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=2G
+      - SPARK_DRIVER_MEMORY=512m
+      - SPARK_EXECUTOR_MEMORY=512m
+    healthcheck:
+      disable: true
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - 4040:4040
+      - 7077:7077
+      - 6066:6066
+      - 8081:8081
+      - 8080:8080
+      - 80:80
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "2"
+    restart: "always"
+    extra_hosts:
+      - "master-spark:192.168.0.100"
+    volumes:
+      - './notebook:/usr/zeppelin/notebook'
+  spark_worker_02:
+    container_name: spark_worker_02
+    image: spark_master:latest
+    hostname: worker_02
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - ZEPPELIN_PORT=80
+      - SPARK_MASTER=spark://master:7077
+      - MASTER=spark://master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=128m
+      - SPARK_EXECUTOR_MEMORY=256m
+    healthcheck:
+      disable: true
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "8083:8081"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "2"
+    restart: "always"
+  spark_worker_01:
+    container_name: spark_worker_01
+    image: spark_master:latest
+    hostname: worker_01
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - ZEPPELIN_PORT=80
+      - SPARK_MASTER=spark://master:7077
+      - MASTER=spark://master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=128m
+      - SPARK_EXECUTOR_MEMORY=256m
+    healthcheck:
+      disable: true
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    ports:
+      - "8082:8081"
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "2"
+    restart: "always"
+    
+  elasticsearch:
+    container_name: es-container
+    hostname: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.11.0
+    environment:
+      - xpack.security.enabled=false
+      - "discovery.type=single-node"
+    ports:
+      - 9200:9200
+      
+  kibana:
+    container_name: kb-container
+    hostname: kibana
+    image: docker.elastic.co/kibana/kibana:7.11.0
+    environment:
+      - ELASTICSEARCH_HOSTS=http://es-container:9200
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601  
+      
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
