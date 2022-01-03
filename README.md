@@ -3,7 +3,7 @@
 * [Python 3.7](https://www.python.org/download/releases/3.7/)
 
 ```
-$ pip install -r requirements.txt
+$ pip install -r requirement.txt
 ```
 ## Start cluster
 ```
